@@ -7,9 +7,12 @@ import * as Notifications from 'expo-notifications';
 
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
+import { useNotifications } from '../../providers/NotificationsProvider';
 import { theme } from '../../ui/theme';
 import { Screen } from '../../ui/components/Screen';
 import { Card } from '../../ui/components/Card';
+import { GradientCard } from '../../ui/components/GradientCard';
+import { NotificationsMenu } from '../../ui/components/NotificationsMenu';
 import { Text } from '../../ui/components/Text';
 import { Button } from '../../ui/components/Button';
 
@@ -33,11 +36,13 @@ function money(n: number) {
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { unreadCount } = useNotifications();
 
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [items, setItems] = useState<ItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notifOpen, setNotifOpen] = useState(false);
   const lastSeenOrderIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -149,12 +154,18 @@ export default function DashboardScreen() {
 
   return (
     <Screen style={{ paddingBottom: theme.spacing.xl }}>
+      <NotificationsMenu visible={notifOpen} onClose={() => setNotifOpen(false)} />
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.sm }}>
-        <Text variant="title" weight="extrabold" style={{ flex: 1 }}>
-          Aquabeast WRS
-        </Text>
+        <View style={{ flex: 1 }}>
+          <Text variant="title" weight="extrabold">
+            Aquabeast WRS
+          </Text>
+          <Text variant="muted" weight="bold" style={{ marginTop: 2 }}>
+            Seller dashboard
+          </Text>
+        </View>
         <Pressable
-          onPress={() => router.push('/(tabs)/orders')}
+          onPress={() => setNotifOpen(true)}
           style={{
             width: 42,
             height: 42,
@@ -167,28 +178,86 @@ export default function DashboardScreen() {
           }}
         >
           <Ionicons name="notifications-outline" size={22} color={theme.colors.text} />
+          {unreadCount > 0 ? (
+            <View
+              style={{
+                position: 'absolute',
+                top: -6,
+                right: -6,
+                minWidth: 18,
+                height: 18,
+                paddingHorizontal: 5,
+                borderRadius: 999,
+                backgroundColor: theme.colors.primary,
+                borderWidth: 2,
+                borderColor: '#FFFFFF',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text
+                variant="chip"
+                weight="extrabold"
+                style={{ color: '#FFFFFF', fontSize: 10, includeFontPadding: false }}
+              >
+                {unreadCount > 99 ? '99+' : String(unreadCount)}
+              </Text>
+            </View>
+          ) : null}
         </Pressable>
       </View>
       <Animated.View entering={FadeInDown.duration(240)} style={{ gap: theme.spacing.md }}>
-        <Card
-          style={{
-            backgroundColor: '#0F5ED3',
-            borderColor: 'rgba(255,255,255,0.18)',
-          }}
-        >
-          <Text variant="muted" weight="bold" style={{ color: 'rgba(255,255,255,0.85)' }}>
-            Today’s Sales
-          </Text>
-          <Text variant="h1" weight="extrabold" style={{ color: '#FFFFFF', marginTop: 6 }}>
-            {money(todaySales)}
-          </Text>
-          <View style={{ marginTop: 12, alignSelf: 'flex-start' }}>
-            <Button title="Today" variant="ghost" />
+        <GradientCard style={{ borderRadius: 24 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text variant="muted" weight="bold" style={{ color: 'rgba(255,255,255,0.86)' }}>
+                Good morning,
+              </Text>
+              <Text variant="title" weight="extrabold" style={{ color: '#FFFFFF', marginTop: 3, letterSpacing: -0.2 }}>
+                {user?.email?.split('@')[0] ? `@${user.email.split('@')[0]}` : 'Seller'}!
+              </Text>
+              <Text variant="muted" style={{ color: 'rgba(255,255,255,0.82)', marginTop: 6 }}>
+                Here’s your business overview.
+              </Text>
+            </View>
+            <View
+              style={{
+                width: 58,
+                height: 58,
+                borderRadius: 18,
+                backgroundColor: 'rgba(255,255,255,0.14)',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.20)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="water" size={28} color="#FFFFFF" />
+            </View>
           </View>
-        </Card>
+
+          <View style={{ marginTop: 14 }}>
+            <Text variant="muted" weight="bold" style={{ color: 'rgba(255,255,255,0.84)' }}>
+              Today’s sales
+            </Text>
+            <Text variant="h1" weight="extrabold" style={{ color: '#FFFFFF', marginTop: 4, letterSpacing: -0.4 }}>
+              {money(todaySales)}
+            </Text>
+          </View>
+        </GradientCard>
 
         {loading ? <Text variant="muted">Loading…</Text> : null}
         {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
+
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text variant="h2" weight="extrabold">
+            Today’s overview
+          </Text>
+          <View style={{ flex: 1 }} />
+          <Text variant="muted" weight="bold">
+            {new Date().toLocaleDateString()}
+          </Text>
+        </View>
 
         <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
           <StatCard label="Total Orders" value={orders.length} />

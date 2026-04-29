@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Image, View } from 'react-native';
+import { Image, Pressable, ScrollView, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
 import { Screen } from '../../ui/components/Screen';
 import { Card } from '../../ui/components/Card';
+import { GradientCard } from '../../ui/components/GradientCard';
 import { Text } from '../../ui/components/Text';
 import { Button } from '../../ui/components/Button';
 import { TextField } from '../../ui/components/TextField';
@@ -14,7 +16,6 @@ import { theme } from '../../ui/theme';
 
 type ProfileRow = {
   store_name: string | null;
-  store_code: string | null;
   phone: string | null;
   store_address: string | null;
   business_hours: string | null;
@@ -36,14 +37,17 @@ const BUCKET = 'wrs-assets';
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [walletSavingId, setWalletSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [wallets, setWallets] = useState<WalletRow[]>([]);
+  const [walletDrafts, setWalletDrafts] = useState<Record<string, { account_name: string; account_number: string }>>(
+    {}
+  );
 
   const [storeName, setStoreName] = useState('');
-  const [storeCode, setStoreCode] = useState('');
   const [phone, setPhone] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [businessHours, setBusinessHours] = useState('');
@@ -62,14 +66,13 @@ export default function ProfileScreen() {
     setLoading(true);
     const { data, error: pErr } = await supabase
       .from('profiles')
-      .select('store_name,store_code,phone,store_address,business_hours,store_logo_url,expo_push_token')
+      .select('*')
       .eq('user_id', user.id)
       .single();
     if (pErr) setError(pErr.message);
     const row = (data ?? null) as ProfileRow | null;
     setProfile(row);
     setStoreName(row?.store_name ?? '');
-    setStoreCode(row?.store_code ?? '');
     setPhone(row?.phone ?? '');
     setStoreAddress(row?.store_address ?? '');
     setBusinessHours(row?.business_hours ?? '');
@@ -81,7 +84,20 @@ export default function ProfileScreen() {
       .eq('seller_id', user.id)
       .order('created_at', { ascending: false });
     if (wErr) setError((prev) => prev ?? wErr.message);
-    setWallets((w ?? []) as WalletRow[]);
+    const nextWallets = (w ?? []) as WalletRow[];
+    setWallets(nextWallets);
+    setWalletDrafts((prev) => {
+      const next = { ...prev };
+      for (const item of nextWallets) {
+        if (!next[item.id]) {
+          next[item.id] = {
+            account_name: item.account_name ?? '',
+            account_number: item.account_number ?? '',
+          };
+        }
+      }
+      return next;
+    });
 
     setLoading(false);
   }
@@ -108,21 +124,25 @@ export default function ProfileScreen() {
 
   async function saveProfile() {
     if (!user) return;
-    setSaving(true);
+    setProfileSaving(true);
     setError(null);
     const { error: err } = await supabase
       .from('profiles')
       .update({
         store_name: storeName || null,
-        store_code: storeCode || null,
         phone: phone || null,
         store_address: storeAddress || null,
         business_hours: businessHours || null,
         store_logo_url: logoUrl || null,
       })
       .eq('user_id', user.id);
-    if (err) setError(err.message);
-    setSaving(false);
+    if (err) {
+      const msg = err.message.includes('does not exist')
+        ? `${err.message}\n\nRun latest SQL in supabase/schema.sql in Supabase SQL Editor.`
+        : err.message;
+      setError(msg);
+    }
+    setProfileSaving(false);
   }
 
   async function pickAndUploadImage(prefix: 'logo' | 'qr') {
@@ -160,7 +180,7 @@ export default function ProfileScreen() {
 
   async function addWallet() {
     if (!user) return;
-    setSaving(true);
+    setWalletSavingId('new');
     setError(null);
     const { error: err } = await supabase.from('ewallet_accounts').insert({
       seller_id: user.id,
@@ -171,15 +191,24 @@ export default function ProfileScreen() {
       is_active: true,
     });
     if (err) setError(err.message);
-    setSaving(false);
+    setWalletSavingId(null);
   }
 
   async function updateWallet(id: string, patch: Partial<WalletRow>) {
-    setSaving(true);
+    setWalletSavingId(id);
     setError(null);
     const { error: err } = await supabase.from('ewallet_accounts').update(patch).eq('id', id);
     if (err) setError(err.message);
-    setSaving(false);
+    setWalletSavingId(null);
+  }
+
+  async function saveWalletDetails(id: string) {
+    const d = walletDrafts[id];
+    if (!d) return;
+    await updateWallet(id, {
+      account_name: d.account_name.trim() ? d.account_name.trim() : null,
+      account_number: d.account_number.trim() ? d.account_number.trim() : null,
+    });
   }
 
   async function uploadWalletQr(id: string) {
@@ -196,78 +225,130 @@ export default function ProfileScreen() {
 
   return (
     <Screen>
-      <Text variant="title" weight="extrabold">
-        Profile
-      </Text>
+      <ScrollView contentContainerStyle={{ paddingBottom: theme.spacing.xl }}>
+        <Text variant="title" weight="extrabold">
+          Profile
+        </Text>
 
-      {loading ? <Text variant="muted">Loading…</Text> : null}
-      {error ? <Text style={{ color: theme.colors.danger }} weight="bold">{error}</Text> : null}
-
-      <Animated.View entering={FadeInDown.duration(220)} style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
-        <Card>
-          <Text variant="h2" weight="extrabold">
-            Business profile
+        {loading ? <Text variant="muted">Loading…</Text> : null}
+        {error ? (
+          <Text style={{ color: theme.colors.danger }} weight="bold">
+            {error}
           </Text>
+        ) : null}
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 }}>
-            <View
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 18,
-                backgroundColor: '#EEF4FF',
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-              }}
-            >
-              {publicLogoUrl ? (
-                <Image source={{ uri: publicLogoUrl }} style={{ width: 56, height: 56 }} />
-              ) : (
-                <Text weight="extrabold" style={{ color: theme.colors.primary }}>
-                  LOGO
+        <Animated.View entering={FadeInDown.duration(220)} style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
+          <GradientCard>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View
+                style={{
+                  width: 54,
+                  height: 54,
+                  borderRadius: 18,
+                  backgroundColor: 'rgba(255,255,255,0.16)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.22)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
+              >
+                {publicLogoUrl ? (
+                  <Image source={{ uri: publicLogoUrl }} style={{ width: 54, height: 54 }} />
+                ) : (
+                  <Ionicons name="person" size={24} color="#FFFFFF" />
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text variant="title" weight="extrabold" style={{ color: '#FFFFFF' }}>
+                  {storeName || 'Seller'}
                 </Text>
-              )}
+                <Text variant="muted" style={{ color: 'rgba(255,255,255,0.82)', marginTop: 2 }}>
+                  {user?.email ?? ' '}
+                </Text>
+              </View>
+              <View
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 10,
+                  borderRadius: 14,
+                  backgroundColor: 'rgba(255,255,255,0.16)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.22)',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                <Text variant="chip" weight="extrabold" style={{ color: '#FFFFFF' }}>
+                  Verified Seller
+                </Text>
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Button
-                variant="ghost"
-                title="Upload logo"
-                disabled={saving}
+          </GradientCard>
+
+          <Card>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text variant="h2" weight="extrabold">
+                Business information
+              </Text>
+              <View style={{ flex: 1 }} />
+              <Pressable
                 onPress={async () => {
                   const path = await pickAndUploadImage('logo');
                   if (!path) return;
                   setLogoUrl(path);
                   await supabase.from('profiles').update({ store_logo_url: path }).eq('user_id', user?.id);
                 }}
+                disabled={profileSaving || walletSavingId !== null}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 10,
+                  borderRadius: 12,
+                  backgroundColor: '#FFFFFF',
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
+                  opacity: profileSaving || walletSavingId !== null ? 0.6 : 1,
+                }}
+              >
+                <Text variant="chip" weight="extrabold" style={{ color: theme.colors.primary }}>
+                  Edit logo
+                </Text>
+              </Pressable>
+            </View>
+
+            <View style={{ marginTop: 12, gap: 10 }}>
+              <TextField label="Store name" value={storeName} onChangeText={setStoreName} placeholder="Aquabeast WRS" />
+              <TextField
+                label="Phone number"
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="09xx xxx xxxx"
+                inputMode="tel"
+              />
+              <TextField
+                label="Store address"
+                value={storeAddress}
+                onChangeText={setStoreAddress}
+                placeholder="House no., street, barangay, city"
+              />
+              <TextField
+                label="Business hours"
+                value={businessHours}
+                onChangeText={setBusinessHours}
+                placeholder="8:00 AM - 8:00 PM"
               />
             </View>
-          </View>
 
-          <View style={{ marginTop: 12, gap: 10 }}>
-            <TextField label="Store name" value={storeName} onChangeText={setStoreName} placeholder="Aquabeast WRS" />
-            <TextField label="Store code" value={storeCode} onChangeText={setStoreCode} placeholder="AQUA1234" />
-            <TextField label="Phone number" value={phone} onChangeText={setPhone} placeholder="09xx xxx xxxx" inputMode="tel" />
-            <TextField
-              label="Store address"
-              value={storeAddress}
-              onChangeText={setStoreAddress}
-              placeholder="House no., street, barangay, city"
-            />
-            <TextField
-              label="Business hours"
-              value={businessHours}
-              onChangeText={setBusinessHours}
-              placeholder="8:00 AM - 8:00 PM"
-            />
-          </View>
-
-          <View style={{ marginTop: 12 }}>
-            <Button title={saving ? 'Saving…' : 'Save profile'} disabled={saving} onPress={saveProfile} />
-          </View>
-        </Card>
+            <View style={{ marginTop: 12 }}>
+              <Button
+                title={profileSaving ? 'Saving…' : 'Save profile'}
+                disabled={profileSaving}
+                onPress={saveProfile}
+              />
+            </View>
+          </Card>
 
         <Card>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -275,7 +356,7 @@ export default function ProfileScreen() {
               E‑Wallet accounts
             </Text>
             <View style={{ flex: 1 }} />
-            <Button variant="ghost" title="+ Add" disabled={saving} onPress={addWallet} />
+            <Button variant="ghost" title="+ Add" disabled={walletSavingId !== null} onPress={addWallet} />
           </View>
 
           <View style={{ marginTop: 12, gap: 12 }}>
@@ -284,6 +365,8 @@ export default function ProfileScreen() {
             ) : (
               wallets.map((w) => {
                 const qrUrl = walletQrPublicUrl(w.qr_image_path);
+                const draft = walletDrafts[w.id] ?? { account_name: w.account_name ?? '', account_number: w.account_number ?? '' };
+                const walletBusy = walletSavingId === w.id || walletSavingId === 'new';
                 return (
                   <Card key={w.id} style={{ padding: 12, borderRadius: 18, backgroundColor: '#FBFDFF' }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -293,7 +376,7 @@ export default function ProfileScreen() {
                       <Button
                         variant={w.is_active ? 'primary' : 'ghost'}
                         title={w.is_active ? 'Active' : 'Inactive'}
-                        disabled={saving}
+                        disabled={walletBusy}
                         onPress={() => updateWallet(w.id, { is_active: !w.is_active })}
                       />
                     </View>
@@ -301,15 +384,26 @@ export default function ProfileScreen() {
                     <View style={{ marginTop: 10, gap: 10 }}>
                       <TextField
                         label="Account name"
-                        value={w.account_name ?? ''}
-                        onChangeText={(v) => updateWallet(w.id, { account_name: v })}
+                        value={draft.account_name}
+                        onChangeText={(v) =>
+                          setWalletDrafts((prev) => ({ ...prev, [w.id]: { ...draft, account_name: v } }))
+                        }
                         placeholder="Juan Dela Cruz"
                       />
                       <TextField
                         label="Account number"
-                        value={w.account_number ?? ''}
-                        onChangeText={(v) => updateWallet(w.id, { account_number: v })}
+                        value={draft.account_number}
+                        onChangeText={(v) =>
+                          setWalletDrafts((prev) => ({ ...prev, [w.id]: { ...draft, account_number: v } }))
+                        }
                         placeholder="09xx xxx xxxx"
+                      />
+
+                      <Button
+                        variant="ghost"
+                        title={walletBusy ? 'Saving…' : 'Save details'}
+                        disabled={walletBusy}
+                        onPress={() => saveWalletDetails(w.id)}
                       />
 
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -332,13 +426,13 @@ export default function ProfileScreen() {
                           <Button
                             variant="ghost"
                             title={w.qr_image_path ? 'Change QR' : 'Upload QR'}
-                            disabled={saving}
+                            disabled={walletBusy}
                             onPress={() => uploadWalletQr(w.id)}
                           />
                           <Button
                             variant="danger"
                             title="Remove"
-                            disabled={saving}
+                            disabled={walletBusy}
                             onPress={() => updateWallet(w.id, { is_active: false })}
                           />
                         </View>
@@ -366,7 +460,8 @@ export default function ProfileScreen() {
             />
           </View>
         </Card>
-      </Animated.View>
+        </Animated.View>
+      </ScrollView>
     </Screen>
   );
 }

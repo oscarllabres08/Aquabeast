@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { Image, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Picker } from '@react-native-picker/picker';
@@ -47,6 +47,7 @@ export default function OrdersScreen() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<'orders' | 'delivered'>('orders');
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -110,17 +111,39 @@ export default function OrdersScreen() {
     [orders]
   );
 
+  const filteredActive = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return activeOrders;
+    return activeOrders.filter((o) => {
+      const idOk = o.id.toLowerCase().includes(q);
+      const nameOk = o.customer_name.toLowerCase().includes(q);
+      const phoneOk = o.contact_number.toLowerCase().includes(q);
+      return idOk || nameOk || phoneOk;
+    });
+  }, [activeOrders, query]);
+
+  const filteredDelivered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return deliveredOrders;
+    return deliveredOrders.filter((o) => {
+      const idOk = o.id.toLowerCase().includes(q);
+      const nameOk = o.customer_name.toLowerCase().includes(q);
+      const phoneOk = o.contact_number.toLowerCase().includes(q);
+      return idOk || nameOk || phoneOk;
+    });
+  }, [deliveredOrders, query]);
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ paddingBottom: theme.spacing.xl, gap: theme.spacing.sm }}>
         <Animated.View entering={FadeInDown.duration(240)} style={{ gap: theme.spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
-              <Text variant="muted" weight="bold">
-                Seller management
-              </Text>
               <Text variant="title" weight="extrabold">
-                Orders
+                Aquabeast WRS
+              </Text>
+              <Text variant="muted" weight="bold" style={{ marginTop: 2 }}>
+                Manage Orders
               </Text>
             </View>
             <View
@@ -137,6 +160,46 @@ export default function OrdersScreen() {
             >
               <Ionicons name="receipt-outline" size={20} color={theme.colors.primary} />
             </View>
+          </View>
+
+          <View
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              borderRadius: 14,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <Ionicons name="search-outline" size={18} color={theme.colors.muted} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search orders"
+              placeholderTextColor="rgba(106,122,149,0.9)"
+              style={{ flex: 1, color: theme.colors.text, fontFamily: theme.font.bold }}
+            />
+            {query ? (
+              <Pressable
+                onPress={() => setQuery('')}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 12,
+                  backgroundColor: 'rgba(18,101,214,0.08)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(18,101,214,0.12)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="close" size={16} color={theme.colors.primary} />
+              </Pressable>
+            ) : null}
           </View>
           {loading ? <Text variant="muted">Loading…</Text> : null}
           {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
@@ -229,7 +292,7 @@ export default function OrdersScreen() {
               subtitle="New and ongoing customer orders."
               icon="flash-outline"
             />
-            {!loading && !error && activeOrders.length === 0 ? (
+            {!loading && !error && filteredActive.length === 0 ? (
               <Card>
                 <Text weight="extrabold">No active orders yet</Text>
                 <Text variant="muted" style={{ marginTop: 6 }}>
@@ -238,7 +301,7 @@ export default function OrdersScreen() {
               </Card>
             ) : null}
 
-            {activeOrders.map((item, index) => (
+            {filteredActive.map((item, index) => (
               <Animated.View key={item.id} entering={FadeInDown.duration(220).delay(30 * index)}>
                 <OrderCard
                   order={item}
@@ -256,7 +319,7 @@ export default function OrdersScreen() {
               subtitle="Completed orders kept as history."
               icon="archive-outline"
             />
-            {!loading && !error && deliveredOrders.length === 0 ? (
+            {!loading && !error && filteredDelivered.length === 0 ? (
               <Card>
                 <Text weight="extrabold">No delivered orders yet</Text>
                 <Text variant="muted" style={{ marginTop: 6 }}>
@@ -265,7 +328,7 @@ export default function OrdersScreen() {
               </Card>
             ) : null}
 
-            {deliveredOrders.map((item, index) => (
+            {filteredDelivered.map((item, index) => (
               <Animated.View key={item.id} entering={FadeInDown.duration(220).delay(30 * index)}>
                 <OrderCard
                   order={item}

@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
 import { Screen } from '../../ui/components/Screen';
 import { Card } from '../../ui/components/Card';
+import { GradientCard } from '../../ui/components/GradientCard';
 import { Text } from '../../ui/components/Text';
 import { Button } from '../../ui/components/Button';
 import { ChipTabs } from '../../ui/components/ChipTabs';
@@ -124,6 +125,13 @@ export default function ProductsScreen() {
     });
   }, [products, query, categoryFilter]);
 
+  const overview = useMemo(() => {
+    const total = products.length;
+    const inStock = products.filter((p) => p.is_available).length;
+    const outOfStock = Math.max(0, total - inStock);
+    return { total, inStock, outOfStock };
+  }, [products]);
+
   function publicImageUrl(pathOrUrl?: string | null) {
     if (!pathOrUrl) return null;
     if (pathOrUrl.startsWith('http')) return pathOrUrl;
@@ -141,9 +149,84 @@ export default function ProductsScreen() {
         ListHeaderComponent={
           <Animated.View entering={FadeInDown.duration(240)} style={{ gap: theme.spacing.sm }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text variant="title" weight="extrabold">Products</Text>
+              <View style={{ flex: 1 }}>
+                <Text variant="title" weight="extrabold">
+                  Aquabeast WRS
+                </Text>
+                <Text variant="muted" weight="bold" style={{ marginTop: 2 }}>
+                  Manage Products
+                </Text>
+              </View>
               <View style={{ flex: 1 }} />
             </View>
+
+            <GradientCard>
+              <Text variant="h2" weight="extrabold" style={{ color: '#FFFFFF' }}>
+                Product overview
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <View
+                    style={{
+                      borderRadius: 16,
+                      paddingVertical: 12,
+                      paddingHorizontal: 12,
+                      backgroundColor: 'rgba(255,255,255,0.14)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(255,255,255,0.20)',
+                    }}
+                  >
+                    <Text variant="muted" weight="bold" style={{ color: 'rgba(255,255,255,0.84)' }}>
+                      Total products
+                    </Text>
+                    <Text variant="title" weight="extrabold" style={{ color: '#FFFFFF', marginTop: 2 }}>
+                      {overview.total}
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View
+                    style={{
+                      borderRadius: 16,
+                      paddingVertical: 12,
+                      paddingHorizontal: 12,
+                      backgroundColor: 'rgba(255,255,255,0.14)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(255,255,255,0.20)',
+                    }}
+                  >
+                    <Text variant="muted" weight="bold" style={{ color: 'rgba(255,255,255,0.84)' }}>
+                      In stock
+                    </Text>
+                    <Text variant="title" weight="extrabold" style={{ color: '#FFFFFF', marginTop: 2 }}>
+                      {overview.inStock}
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View
+                    style={{
+                      borderRadius: 16,
+                      paddingVertical: 12,
+                      paddingHorizontal: 12,
+                      backgroundColor: 'rgba(255,255,255,0.14)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(255,255,255,0.20)',
+                    }}
+                  >
+                    <Text variant="muted" weight="bold" style={{ color: 'rgba(255,255,255,0.84)' }}>
+                      Out of stock
+                    </Text>
+                    <Text variant="title" weight="extrabold" style={{ color: '#FFFFFF', marginTop: 2 }}>
+                      {overview.outOfStock}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <View style={{ marginTop: 12 }}>
+                <Button variant="ghost" title="+ Add new product" onPress={() => router.push('/product/new')} />
+              </View>
+            </GradientCard>
 
             <View
               style={{
@@ -302,16 +385,7 @@ export default function ProductsScreen() {
         )}
       />
 
-      <View
-        style={{
-          position: 'absolute',
-          left: theme.spacing.md,
-          right: theme.spacing.md,
-          bottom: theme.spacing.md,
-        }}
-      >
-        <Button title="+ Add New Product" onPress={() => router.push('/product/new')} />
-      </View>
+      {/* CTA moved to the overview card to match mock */}
     </Screen>
   );
 }

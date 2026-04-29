@@ -35,7 +35,6 @@ export function OrderPage() {
     'all'
   );
   const [step, setStep] = useState<'menu' | 'checkout'>('menu');
-  const [activeProductId, setActiveProductId] = useState<string | null>(null);
 
   const [customerName, setCustomerName] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
@@ -100,13 +99,14 @@ export function OrderPage() {
   // Prefill checkout fields from customer profile (editable).
   useEffect(() => {
     if (authLoading) return;
-    if (!user) return;
+    const userId = user?.id;
+    if (!userId) return;
     let alive = true;
     async function loadProfile() {
       const { data, error } = await supabase
         .from('profiles')
         .select('display_name,phone,address')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .maybeSingle();
       if (!alive) return;
       if (error) return;
@@ -158,11 +158,6 @@ export function OrderPage() {
       return cat === categoryFilter;
     });
   }, [products, categoryFilter]);
-
-  const activeProduct = useMemo(() => {
-    if (!activeProductId) return null;
-    return products.find((p) => p.id === activeProductId) ?? null;
-  }, [activeProductId, products]);
 
   async function placeOrder() {
     setPlacedOrderId(null);
@@ -294,23 +289,11 @@ export function OrderPage() {
                     {filtered.map((p) => {
                       const cat = (p.category ?? 'water') as 'water' | 'other';
                       return (
-                        <button
+                        <div
                           key={p.id}
-                          type="button"
-                          className="btn btn-ghost"
-                          style={{
-                            width: '100%',
-                            textAlign: 'left',
-                            padding: 0,
-                            border: 'none',
-                            background: 'transparent',
-                          }}
-                          onClick={() => {
-                            if (!p.is_available) return;
-                            setActiveProductId(p.id);
-                          }}
+                          style={{ opacity: p.is_available ? 1 : 0.6 }}
                         >
-                          <div className="product-card">
+                          <div className="product-card" style={{ alignItems: 'flex-start' }}>
                             {publicImageUrl(p.image_url) ? (
                               <img className="product-img" src={publicImageUrl(p.image_url)!} alt={p.name} />
                             ) : (
@@ -318,21 +301,39 @@ export function OrderPage() {
                             )}
                             <div className="product-meta">
                               <div className="product-title">{p.name}</div>
-                              <div className="product-sub">
-                                <span>{formatMoney(p.price)}</span>
+                              <div className="muted" style={{ marginTop: 2, fontWeight: 700 }}>
+                                Purified Drinking Water
+                              </div>
+                              <div className="product-sub" style={{ marginTop: 6 }}>
+                                <span style={{ color: 'var(--primary)', fontWeight: 900 }}>
+                                  {formatMoney(p.price)}
+                                </span>
                                 <span className="tag">{cat === 'water' ? 'Water' : 'Other'}</span>
-                                {!p.is_available ? (
-                                  <span className="tag tag-muted">Unavailable</span>
-                                ) : (
-                                  <span className="tag">Available</span>
-                                )}
+                              </div>
+                              <div className="row" style={{ marginTop: 10 }}>
+                                <button
+                                  className="qty-btn"
+                                  type="button"
+                                  onClick={() => bump(p.id, -1)}
+                                  disabled={!p.is_available}
+                                >
+                                  −
+                                </button>
+                                <div className="qty-num" aria-label="Quantity">
+                                  {qtyById[p.id] ?? 0}
+                                </div>
+                                <button
+                                  className="qty-btn"
+                                  type="button"
+                                  onClick={() => bump(p.id, +1)}
+                                  disabled={!p.is_available}
+                                >
+                                  +
+                                </button>
                               </div>
                             </div>
-                            <div className="tap-arrow" aria-hidden="true">
-                              ›
-                            </div>
                           </div>
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -349,7 +350,7 @@ export function OrderPage() {
                       </div>
                       <div className="spacer" />
                       <button className="btn btn-primary" type="button" onClick={() => setStep('checkout')}>
-                        Checkout
+                        Proceed to checkout
                       </button>
                     </div>
                   </div>
@@ -359,8 +360,22 @@ export function OrderPage() {
           ) : (
             <section className="card">
               <div className="row">
-                <button className="btn btn-ghost" type="button" onClick={() => setStep('menu')}>
-                  Back to menu
+                <button
+                  className="btn btn-ghost btn-icon"
+                  type="button"
+                  onClick={() => setStep('menu')}
+                  aria-label="Back to menu"
+                  title="Back"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M15 18l-6-6 6-6"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                 </button>
                 <div className="spacer" />
                 <div className="h2">{formatMoney(total)}</div>
@@ -427,46 +442,6 @@ export function OrderPage() {
               )}
             </section>
           )}
-        </>
-      )}
-
-      {activeProduct && (
-        <>
-          <div className="modal-backdrop" onClick={() => setActiveProductId(null)} />
-          <div className="modal-sheet" role="dialog" aria-modal="true">
-            <div className="card">
-              {publicImageUrl(activeProduct.image_url) ? (
-                <img className="sheet-img" src={publicImageUrl(activeProduct.image_url)!} alt={activeProduct.name} />
-              ) : (
-                <div className="sheet-img" aria-hidden="true" />
-              )}
-
-              <div style={{ marginTop: 10 }}>
-                <div className="item-title">{activeProduct.name}</div>
-                <div className="muted" style={{ marginTop: 2 }}>
-                  {formatMoney(activeProduct.price)}
-                </div>
-              </div>
-
-              <div className="row" style={{ marginTop: 12 }}>
-                <div className="qty">
-                  <button className="qty-btn" onClick={() => bump(activeProduct.id, -1)} type="button">
-                    −
-                  </button>
-                  <div className="qty-num" aria-label="Quantity">
-                    {qtyById[activeProduct.id] ?? 0}
-                  </div>
-                  <button className="qty-btn" onClick={() => bump(activeProduct.id, +1)} type="button">
-                    +
-                  </button>
-                </div>
-                <div className="spacer" />
-                <button className="btn btn-ghost" type="button" onClick={() => setActiveProductId(null)}>
-                  Done
-                </button>
-              </div>
-            </div>
-          </div>
         </>
       )}
     </div>

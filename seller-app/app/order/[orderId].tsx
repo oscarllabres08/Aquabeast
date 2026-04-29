@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { Image, ScrollView, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Picker } from '@react-native-picker/picker';
@@ -10,7 +10,6 @@ import { useAuth } from '../../providers/AuthProvider';
 import { Screen } from '../../ui/components/Screen';
 import { Card } from '../../ui/components/Card';
 import { Text } from '../../ui/components/Text';
-import { Button } from '../../ui/components/Button';
 import { theme } from '../../ui/theme';
 
 type OrderRow = {
@@ -46,7 +45,6 @@ function money(n: number) {
 }
 
 export default function OrderDetailsScreen() {
-  const router = useRouter();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const { user } = useAuth();
   const [order, setOrder] = useState<OrderRow | null>(null);
@@ -124,31 +122,7 @@ export default function OrderDetailsScreen() {
 
   return (
     <Screen>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-        <Button variant="ghost" title="Back" onPress={() => router.back()} />
-        <View style={{ flex: 1 }}>
-          <Text variant="muted" weight="bold">
-            Seller management
-          </Text>
-          <Text variant="title" weight="extrabold">
-            Order Details
-          </Text>
-        </View>
-        <View
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 14,
-            backgroundColor: '#FFFFFF',
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Ionicons name="document-text-outline" size={20} color={theme.colors.primary} />
-        </View>
-      </View>
+      <Stack.Screen options={{ title: 'Order Details' }} />
 
       <ScrollView contentContainerStyle={{ paddingTop: theme.spacing.md, gap: theme.spacing.sm, paddingBottom: 28 }}>
         {loading ? <Text variant="muted">Loading…</Text> : null}

@@ -124,12 +124,12 @@ export function AnimatedTabBar({ state, descriptors, navigation }: BottomTabBarP
                 <Ionicons
                   name={iconName}
                   size={22}
-                  color={isFocused ? theme.colors.primary : 'rgba(11,27,58,0.50)'}
+                  color={isFocused ? theme.colors.primary : 'rgba(18,101,214,0.55)'}
                 />
                 <Text
                   variant="chip"
                   weight="extrabold"
-                  style={{ color: isFocused ? theme.colors.primary : 'rgba(11,27,58,0.55)' }}
+                  style={{ color: isFocused ? theme.colors.primary : 'rgba(18,101,214,0.55)' }}
                 >
                   {label}
                 </Text>

@@ -58,3 +58,22 @@ cd seller-app
 npm run start
 ```
 
+## 4) Customer mobile app (Expo SDK 55 wrapper)
+
+This converts the customer experience into a **native Expo app (SDK 55)** with the same flows:
+Home → Order → Checkout → Profile (My Orders) → Order Details.
+
+1. Configure env:
+   - Copy `customer-app/.env.example` → `customer-app/.env`
+   - Set:
+     - `EXPO_PUBLIC_SUPABASE_URL`
+     - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+
+2. Run the customer app:
+
+```bash
+cd customer-app
+npm install
+npm run start
+```
+

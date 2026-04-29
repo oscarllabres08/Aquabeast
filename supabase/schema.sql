@@ -134,6 +134,119 @@ alter table public.products enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
 
+-- Notifications (in-app inbox for seller/customer)
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  recipient_id uuid not null references public.profiles(user_id) on delete cascade,
+  order_id uuid references public.orders(id) on delete cascade,
+  kind text not null, -- e.g. 'new_order' | 'order_status'
+  title text not null,
+  body text not null,
+  data jsonb not null default '{}'::jsonb,
+  read_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists notifications_recipient_id_idx on public.notifications(recipient_id, created_at desc);
+create index if not exists notifications_order_id_idx on public.notifications(order_id);
+
+alter table public.notifications enable row level security;
+
+drop policy if exists "notifications read own" on public.notifications;
+create policy "notifications read own"
+on public.notifications for select
+using (auth.uid() = recipient_id);
+
+drop policy if exists "notifications delete own" on public.notifications;
+create policy "notifications delete own"
+on public.notifications for delete
+using (auth.uid() = recipient_id);
+
+drop policy if exists "notifications update own" on public.notifications;
+create policy "notifications update own"
+on public.notifications for update
+using (auth.uid() = recipient_id)
+with check (auth.uid() = recipient_id);
+
+-- Create notification when customer places an order (seller inbox)
+create or replace function public.notify_seller_new_order()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  first_item record;
+  item_summary text;
+begin
+  select oi.product_name, oi.quantity
+    into first_item
+  from public.order_items oi
+  where oi.order_id = new.id
+  order by oi.created_at asc
+  limit 1;
+
+  if first_item.product_name is null then
+    item_summary := 'New order received.';
+  else
+    item_summary := first_item.product_name || ' • Qty ' || first_item.quantity::text;
+  end if;
+
+  insert into public.notifications(recipient_id, order_id, kind, title, body, data)
+  values (
+    new.seller_id,
+    new.id,
+    'new_order',
+    'New order',
+    coalesce(new.customer_name, 'Customer') || ' placed an order. ' || item_summary,
+    jsonb_build_object(
+      'orderId', new.id,
+      'customerName', new.customer_name,
+      'firstItem', coalesce(first_item.product_name, null),
+      'qty', coalesce(first_item.quantity, null)
+    )
+  );
+
+  return new;
+end;
+$$;
+
+drop trigger if exists orders_notify_seller_new_order on public.orders;
+create trigger orders_notify_seller_new_order
+after insert on public.orders
+for each row execute function public.notify_seller_new_order();
+
+-- Create notification when seller updates order status (customer inbox)
+create or replace function public.notify_customer_order_status()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.status is distinct from old.status then
+    insert into public.notifications(recipient_id, order_id, kind, title, body, data)
+    values (
+      new.customer_id,
+      new.id,
+      'order_status',
+      'Order update',
+      'Your order is now ' || replace(new.status::text, '_', ' ') || '.',
+      jsonb_build_object(
+        'orderId', new.id,
+        'status', new.status::text
+      )
+    );
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists orders_notify_customer_status on public.orders;
+create trigger orders_notify_customer_status
+after update of status on public.orders
+for each row execute function public.notify_customer_order_status();
+
 -- E-wallet accounts (seller-managed)
 create table if not exists public.ewallet_accounts (
   id uuid primary key default gen_random_uuid(),
