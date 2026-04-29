@@ -12,6 +12,7 @@ import { Card } from '../../ui/components/Card';
 import { Text } from '../../ui/components/Text';
 import { Button } from '../../ui/components/Button';
 import { theme } from '../../ui/theme';
+import { SellerOrdersSkeleton } from '../../ui/components/Skeleton';
 
 type OrderItemPreview = {
   id: string;
@@ -29,6 +30,9 @@ type OrderRow = {
   customer_name: string;
   contact_number: string;
   delivery_address: string;
+  landmark: string | null;
+  latitude: number | null;
+  longitude: number | null;
   notes: string | null;
   status: string;
   created_at: string;
@@ -62,7 +66,7 @@ export default function OrdersScreen() {
       const { data, error: err } = await supabase
         .from('orders')
         .select(
-          'id,customer_name,contact_number,delivery_address,notes,status,created_at,order_items(id,product_name,quantity,unit_price,product_id,products(image_url))'
+          'id,customer_name,contact_number,delivery_address,landmark,latitude,longitude,notes,status,created_at,order_items(id,product_name,quantity,unit_price,product_id,products(image_url))'
         )
         .eq('seller_id', user.id)
         .order('created_at', { ascending: false });
@@ -201,11 +205,12 @@ export default function OrdersScreen() {
               </Pressable>
             ) : null}
           </View>
-          {loading ? <Text variant="muted">Loading…</Text> : null}
+          {loading ? <SellerOrdersSkeleton /> : null}
           {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(240).delay(40)}>
+        {!loading ? (
+          <Animated.View entering={FadeInDown.duration(240).delay(40)}>
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
             <View style={{ flex: 1 }}>
               <Card
@@ -256,9 +261,11 @@ export default function OrdersScreen() {
               </Card>
             </View>
           </View>
-        </Animated.View>
+          </Animated.View>
+        ) : null}
 
-        <Animated.View entering={FadeInDown.duration(240).delay(70)} style={{ gap: theme.spacing.sm }}>
+        {!loading ? (
+          <Animated.View entering={FadeInDown.duration(240).delay(70)} style={{ gap: theme.spacing.sm }}>
           <View
             style={{
               flexDirection: 'row',
@@ -283,9 +290,10 @@ export default function OrdersScreen() {
               onPress={() => setSelectedCategory('delivered')}
             />
           </View>
-        </Animated.View>
+          </Animated.View>
+        ) : null}
 
-        {selectedCategory === 'orders' ? (
+        {!loading && selectedCategory === 'orders' ? (
           <View style={{ gap: theme.spacing.sm }}>
             <SectionHeader
               title="Orders"
@@ -312,7 +320,7 @@ export default function OrdersScreen() {
               </Animated.View>
             ))}
           </View>
-        ) : (
+        ) : !loading ? (
           <View style={{ gap: theme.spacing.sm }}>
             <SectionHeader
               title="Delivered"
@@ -340,7 +348,7 @@ export default function OrdersScreen() {
               </Animated.View>
             ))}
           </View>
-        )}
+        ) : null}
       </ScrollView>
     </Screen>
   );
@@ -505,7 +513,8 @@ function OrderCard({
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 4 }}>
             <Ionicons name="location-outline" size={14} color={theme.colors.muted} style={{ marginTop: 1 }} />
             <Text variant="muted" style={{ flex: 1 }}>
-              {order.delivery_address}
+              {order.delivery_address.length > 72 ? `${order.delivery_address.slice(0, 72)}...` : order.delivery_address}
+              {order.landmark ? ` • ${order.landmark}` : ''}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
@@ -553,26 +562,6 @@ function OrderCard({
             backgroundColor: delivered ? 'rgba(240,253,244,0.95)' : '#FFFFFF',
           }}
         >
-          <View
-            style={{
-              paddingHorizontal: 12,
-              paddingTop: 10,
-              paddingBottom: 2,
-              backgroundColor: delivered ? 'rgba(240,253,244,0.95)' : '#FFFFFF',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <Text variant="muted" weight="bold">
-              Set as
-            </Text>
-            <Ionicons
-              name="chevron-down"
-              size={16}
-              color={delivered ? theme.colors.success : theme.colors.primary}
-            />
-          </View>
           <Picker
             enabled={!updating && !delivered}
             dropdownIconColor={delivered ? theme.colors.success : theme.colors.primary}
@@ -582,24 +571,24 @@ function OrderCard({
               onChangeStatus(String(value));
             }}
           >
-            <Picker.Item label="Set as..." value="" />
+            <Picker.Item label="Select status..." value="" />
             {STATUS_OPTIONS.map((option) => (
               <Picker.Item key={option.key} label={option.label} value={option.key} />
             ))}
           </Picker>
         </View>
-        <View style={{ width: 122, justifyContent: 'flex-end' }}>
+        <View style={{ width: 110, justifyContent: 'flex-end' }}>
           <Pressable
             onPress={onViewDetails}
             style={{
-              minHeight: 54,
+              minHeight: 48,
               borderRadius: 12,
               backgroundColor: theme.colors.primary,
               borderWidth: 1,
               borderColor: 'rgba(18,101,214,0.28)',
               alignItems: 'center',
               justifyContent: 'center',
-              paddingHorizontal: 12,
+              paddingHorizontal: 10,
               ...theme.shadow.card,
             }}
           >

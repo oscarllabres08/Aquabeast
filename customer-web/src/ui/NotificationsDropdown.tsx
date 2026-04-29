@@ -66,34 +66,18 @@ export function NotificationsDropdown({
 
   useEffect(() => {
     if (!user) return;
-    const channel = supabase
-      .channel(`customer-notifs-${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${user.id}` },
-        (payload) => {
-          const n = payload.new as any;
-          // Browser popup (only when page open; without service worker this won't work in background)
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-            try {
-              const notif = new Notification(String(n.title ?? 'Notification'), {
-                body: String(n.body ?? ''),
-              });
-              notif.onclick = () => {
-                const orderId = (n.order_id ?? n.data?.orderId) as string | undefined;
-                if (orderId) nav(`/profile/orders/${orderId}`);
-                else nav('/order');
-              };
-            } catch {
-              // ignore
-            }
-          }
-          load();
-        }
-      )
-      .subscribe();
+    const timer = window.setInterval(() => {
+      load();
+    }, 12000);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
     return () => {
-      supabase.removeChannel(channel);
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);

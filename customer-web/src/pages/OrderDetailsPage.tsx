@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthProvider';
 import { supabase } from '../lib/supabase';
+import { OrderDetailsSkeleton } from '../ui/Skeleton';
 
 type OrderRow = {
   id: string;
@@ -91,18 +92,19 @@ export function OrderDetailsPage() {
 
     load();
 
-    const channel = supabase
-      .channel(`order-${orderId}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
-        () => load()
-      )
-      .subscribe();
+    const timer = window.setInterval(() => {
+      load();
+    }, 12000);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
       alive = false;
-      supabase.removeChannel(channel);
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [orderId, user, authLoading]);
 
@@ -128,7 +130,7 @@ export function OrderDetailsPage() {
       </header>
 
       {loading ? (
-        <section className="card">Loading…</section>
+        <OrderDetailsSkeleton />
       ) : err ? (
         <section className="card">
           <div className="alert alert-error">{err}</div>

@@ -79,12 +79,19 @@ create table if not exists public.orders (
   seller_id uuid not null references public.profiles(user_id) on delete restrict,
   customer_name text not null,
   delivery_address text not null,
+  landmark text,
   contact_number text not null,
+  latitude double precision,
+  longitude double precision,
   notes text,
   status public.order_status not null default 'pending',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.orders add column if not exists landmark text;
+alter table public.orders add column if not exists latitude double precision;
+alter table public.orders add column if not exists longitude double precision;
 
 drop trigger if exists orders_set_updated_at on public.orders;
 create trigger orders_set_updated_at

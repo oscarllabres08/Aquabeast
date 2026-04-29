@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import logoImg from '../assets/icon.jpeg';
 import { NotificationsDropdown } from '../ui/NotificationsDropdown';
 import { useNotificationsUnreadCount } from '../ui/useNotificationsUnreadCount';
+import { ProfilePageSkeleton, SkeletonBlock } from '../ui/Skeleton';
 
 type OrderRow = {
   id: string;
@@ -34,6 +35,7 @@ export function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<'profile' | 'wallets' | 'settings' | 'help'>('profile');
 
   useEffect(() => {
     if (!user) {
@@ -69,25 +71,26 @@ export function ProfilePage() {
 
     load();
 
-    const channel = supabase
-      .channel(`customer-orders-${userId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders', filter: `customer_id=eq.${userId}` },
-        () => load()
-      )
-      .subscribe();
+    const timer = window.setInterval(() => {
+      load();
+    }, 12000);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
       alive = false;
-      supabase.removeChannel(channel);
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [user]);
 
   if (authLoading) {
     return (
       <div className="page">
-        <section className="card">Loading…</section>
+        <ProfilePageSkeleton />
       </div>
     );
   }
@@ -184,175 +187,135 @@ export function ProfilePage() {
       </section>
 
       <section className="card">
-        <div className="row">
-          <div className="section-title">My orders</div>
-          <div className="spacer" />
-          <Link to="/profile" className="muted" style={{ fontWeight: 900 }}>
-            View all
-          </Link>
-        </div>
-        <div style={{ marginTop: 10 }}>
-          {loading ? (
-            <div className="muted">Loading…</div>
-          ) : err ? (
-            <div className="alert alert-error">{err}</div>
-          ) : orders.length === 0 ? (
-            <div className="muted">No orders yet.</div>
-          ) : (
-            <div className="order-history">
-              {orders.slice(0, 3).map((o) => (
-                <Link key={o.id} to={`/profile/orders/${o.id}`} className="order-history-card">
-                  <div className="row" style={{ alignItems: 'flex-start' }}>
-                    <div style={{ flex: 1 }}>
-                      <div className="item-title">{o.customer_name || 'Order'}</div>
-                      <div className="muted" style={{ marginTop: 2 }}>
-                        {new Date(o.created_at).toLocaleString()}
-                      </div>
-                      <div className="muted" style={{ marginTop: 2 }}>
-                        {o.delivery_address}
-                      </div>
-                    </div>
-                    <div className={`pill pill-${o.status}`}>{statusLabel(o.status)}</div>
-                    <div className="chev" aria-hidden="true">
-                      ›
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="card">
-        <div className="section-title">Account settings</div>
-        <div className="list" style={{ marginTop: 10 }}>
-          <Link className="list-tile" to="/profile/edit">
-            <div className="list-tile-icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24">
-                <path d="M12 12.2a4.6 4.6 0 1 0-4.6-4.6A4.6 4.6 0 0 0 12 12.2Z" fill="currentColor" opacity="0.2" />
-                <path d="M4.7 21a7.3 7.3 0 0 1 14.6 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                <path d="M12 12.2a4.6 4.6 0 1 0-4.6-4.6A4.6 4.6 0 0 0 12 12.2Z" stroke="currentColor" strokeWidth="1.8" />
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className="item-title">Edit profile</div>
-              <div className="muted">Update name and phone</div>
-            </div>
-            <div className="chev">›</div>
-          </Link>
-          <Link className="list-tile" to="/profile/addresses">
-            <div className="list-tile-icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24">
-                <path d="M12 3 4 7v10l8 4 8-4V7l-8-4Z" fill="currentColor" opacity="0.2" />
-                <path d="M12 3 4 7v10l8 4 8-4V7l-8-4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className="item-title">Addresses</div>
-              <div className="muted">Manage delivery addresses</div>
-            </div>
-            <div className="chev">›</div>
-          </Link>
-          <Link className="list-tile" to="/profile/notifications">
-            <div className="list-tile-icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24">
-                <path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Z" fill="currentColor" opacity="0.2" />
-                <path d="M19 17H5a2 2 0 0 1 2-2V10a5 5 0 0 1 10 0v5a2 2 0 0 1 2 2Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className="item-title">Notifications</div>
-              <div className="muted">Order updates</div>
-            </div>
-            <div className="chev">›</div>
-          </Link>
-          <Link className="list-tile" to="/profile/password">
-            <div className="list-tile-icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24">
-                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Z" fill="currentColor" opacity="0.2" />
-                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Z" stroke="currentColor" strokeWidth="1.8" />
-                <path d="M12 8v4l2.6 2.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className="item-title">Change password</div>
-              <div className="muted">Secure your account</div>
-            </div>
-            <div className="chev">›</div>
-          </Link>
-        </div>
-
-        <button
-          className="btn btn-ghost"
-          onClick={async () => {
-            await signOut();
-            nav('/');
-          }}
-        >
-          Logout
+        <button type="button" className={`profile-section-row ${activeSection === 'profile' ? 'profile-section-active' : ''}`} onClick={() => setActiveSection('profile')}>
+          <span>Profile</span>
+          <span className="chev">›</span>
+        </button>
+        <button type="button" className={`profile-section-row ${activeSection === 'wallets' ? 'profile-section-active' : ''}`} onClick={() => setActiveSection('wallets')}>
+          <span>E-wallet accounts</span>
+          <span className="chev">›</span>
+        </button>
+        <button type="button" className={`profile-section-row ${activeSection === 'settings' ? 'profile-section-active' : ''}`} onClick={() => setActiveSection('settings')}>
+          <span>Account settings</span>
+          <span className="chev">›</span>
+        </button>
+        <button type="button" className={`profile-section-row ${activeSection === 'help' ? 'profile-section-active' : ''}`} onClick={() => setActiveSection('help')}>
+          <span>Help Center</span>
+          <span className="chev">›</span>
         </button>
       </section>
 
-      <section className="card">
-        <div className="section-title">About</div>
-        <div className="list" style={{ marginTop: 10 }}>
-          <Link className="list-tile" to="/about">
-            <div className="list-tile-icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24">
-                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Z" fill="currentColor" opacity="0.2" />
-                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Z" stroke="currentColor" strokeWidth="1.8" />
-                <path d="M12 11v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                <path d="M12 7.4h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-              </svg>
+      {activeSection === 'profile' ? (
+        <section className="card">
+          <div className="section-title">Profile</div>
+          <div style={{ marginTop: 10 }}>
+            {loading ? (
+              <div className="skeleton-stack">
+                <SkeletonBlock width="100%" height={72} radius={14} />
+                <SkeletonBlock width="100%" height={72} radius={14} />
+              </div>
+            ) : err ? (
+              <div className="alert alert-error">{err}</div>
+            ) : orders.length === 0 ? (
+              <div className="muted">No orders yet.</div>
+            ) : (
+              <div className="order-history">
+                {orders.slice(0, 3).map((o) => (
+                  <Link key={o.id} to={`/profile/orders/${o.id}`} className="order-history-card">
+                    <div className="row" style={{ alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1 }}>
+                        <div className="item-title">{o.customer_name || 'Order'}</div>
+                        <div className="muted" style={{ marginTop: 2 }}>{new Date(o.created_at).toLocaleString()}</div>
+                        <div className="muted" style={{ marginTop: 2 }}>{o.delivery_address}</div>
+                      </div>
+                      <div className={`pill pill-${o.status}`}>{statusLabel(o.status)}</div>
+                      <div className="chev" aria-hidden="true">›</div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {activeSection === 'wallets' ? (
+        <section className="card">
+          <div className="section-title">E-wallet accounts</div>
+          <div className="list" style={{ marginTop: 10 }}>
+            <Link className="list-tile" to="/profile/addresses">
+              <div style={{ flex: 1 }}>
+                <div className="item-title">Saved payment details</div>
+                <div className="muted">Manage GCash, Maya, and other payment details</div>
+              </div>
+              <div className="chev">›</div>
+            </Link>
+            <div className="list-tile">
+              <div style={{ flex: 1 }}>
+                <div className="item-title">Primary account</div>
+                <div className="muted">Set your default e-wallet for faster checkout</div>
+              </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <div className="item-title">About Aquabeast WRS</div>
-              <div className="muted">Learn more about us</div>
+          </div>
+        </section>
+      ) : null}
+
+      {activeSection === 'settings' ? (
+        <section className="card">
+          <div className="section-title">Account settings</div>
+          <div className="list" style={{ marginTop: 10 }}>
+            <Link className="list-tile" to="/profile/edit">
+              <div style={{ flex: 1 }}>
+                <div className="item-title">Edit profile</div>
+                <div className="muted">Update name and phone</div>
+              </div>
+              <div className="chev">›</div>
+            </Link>
+            <Link className="list-tile" to="/profile/password">
+              <div style={{ flex: 1 }}>
+                <div className="item-title">Change password</div>
+                <div className="muted">Secure your account</div>
+              </div>
+              <div className="chev">›</div>
+            </Link>
+            <button
+              className="btn btn-ghost"
+              onClick={async () => {
+                await signOut();
+                nav('/');
+              }}
+            >
+              Logout
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {activeSection === 'help' ? (
+        <section className="card">
+          <div className="section-title">Help Center</div>
+          <div className="list" style={{ marginTop: 10 }}>
+            <div className="list-tile">
+              <div style={{ flex: 1 }}>
+                <div className="item-title">Developer team</div>
+                <div className="muted">Aquabeast WRS Dev Team</div>
+              </div>
             </div>
-            <div className="chev">›</div>
-          </Link>
-          <Link className="list-tile" to="/legal/terms">
-            <div className="list-tile-icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24">
-                <path d="M7 3h10v18H7V3Z" fill="currentColor" opacity="0.2" />
-                <path d="M7 3h10v18H7V3Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-              </svg>
+            <div className="list-tile">
+              <div style={{ flex: 1 }}>
+                <div className="item-title">Email</div>
+                <div className="muted">aquabeastwrs.dev@gmail.com</div>
+              </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <div className="item-title">Terms & Conditions</div>
-              <div className="muted">Read our terms</div>
+            <div className="list-tile">
+              <div style={{ flex: 1 }}>
+                <div className="item-title">Phone</div>
+                <div className="muted">+63 912 345 6789</div>
+              </div>
             </div>
-            <div className="chev">›</div>
-          </Link>
-          <Link className="list-tile" to="/legal/privacy">
-            <div className="list-tile-icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24">
-                <path d="M12 2 4 6v6c0 6 4 9 8 10 4-1 8-4 8-10V6l-8-4Z" fill="currentColor" opacity="0.2" />
-                <path d="M12 2 4 6v6c0 6 4 9 8 10 4-1 8-4 8-10V6l-8-4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className="item-title">Privacy Policy</div>
-              <div className="muted">How we handle data</div>
-            </div>
-            <div className="chev">›</div>
-          </Link>
-          <Link className="list-tile" to="/help">
-            <div className="list-tile-icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24">
-                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Z" fill="currentColor" opacity="0.2" />
-                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Z" stroke="currentColor" strokeWidth="1.8" />
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className="item-title">Help & Support</div>
-              <div className="muted">Get assistance</div>
-            </div>
-            <div className="chev">›</div>
-          </Link>
-        </div>
-      </section>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

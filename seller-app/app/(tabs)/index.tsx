@@ -15,6 +15,7 @@ import { GradientCard } from '../../ui/components/GradientCard';
 import { NotificationsMenu } from '../../ui/components/NotificationsMenu';
 import { Text } from '../../ui/components/Text';
 import { Button } from '../../ui/components/Button';
+import { SellerDashboardSkeleton } from '../../ui/components/Skeleton';
 
 type OrderRow = {
   id: string;
@@ -246,10 +247,12 @@ export default function DashboardScreen() {
           </View>
         </GradientCard>
 
-        {loading ? <Text variant="muted">Loading…</Text> : null}
+        {loading ? <SellerDashboardSkeleton /> : null}
         {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
 
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        {!loading ? (
+          <>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Text variant="h2" weight="extrabold">
             Today’s overview
           </Text>
@@ -268,7 +271,7 @@ export default function DashboardScreen() {
           <StatCard label="Cancelled" value={counts.cancelled ?? 0} />
         </View>
 
-        <Card>
+            <Card>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Text variant="h2" weight="extrabold">
               Recent Orders
@@ -306,7 +309,9 @@ export default function DashboardScreen() {
               )}
             />
           </View>
-        </Card>
+            </Card>
+          </>
+        ) : null}
       </Animated.View>
     </Screen>
   );

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthProvider';
 import { supabase } from '../lib/supabase';
+import { FormPageSkeleton } from '../ui/Skeleton';
 
 export function ChangePasswordPage() {
   const nav = useNavigate();
@@ -17,6 +18,14 @@ export function ChangePasswordPage() {
     if (loading) return;
     if (!user) nav('/auth');
   }, [user, loading, nav]);
+
+  if (loading) {
+    return (
+      <div className="page">
+        <FormPageSkeleton />
+      </div>
+    );
+  }
 
   async function save() {
     setError(null);

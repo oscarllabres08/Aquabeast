@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthProvider';
+import { FormPageSkeleton } from '../ui/Skeleton';
 
 export function NotificationsPage() {
   const nav = useNavigate();
@@ -12,6 +13,14 @@ export function NotificationsPage() {
     if (loading) return;
     if (!user) nav('/auth');
   }, [user, loading, nav]);
+
+  if (loading) {
+    return (
+      <div className="page">
+        <FormPageSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="page">

@@ -27,16 +27,20 @@ export function useNotificationsUnreadCount() {
 
   useEffect(() => {
     if (!user) return;
-    const channel = supabase
-      .channel(`notif-count-${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${user.id}` },
-        () => refresh()
-      )
-      .subscribe();
+
+    refresh();
+    const timer = window.setInterval(() => {
+      refresh();
+    }, 12000);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
     return () => {
-      supabase.removeChannel(channel);
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);

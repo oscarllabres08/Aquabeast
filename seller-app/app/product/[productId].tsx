@@ -10,6 +10,7 @@ import { Screen } from '../../ui/components/Screen';
 import { Card } from '../../ui/components/Card';
 import { Text } from '../../ui/components/Text';
 import { Button } from '../../ui/components/Button';
+import { SellerProductsSkeleton } from '../../ui/components/Skeleton';
 import { theme } from '../../ui/theme';
 
 type ProductRow = {
@@ -156,7 +157,7 @@ export default function EditProductScreen() {
     <Screen>
       <Animated.View entering={FadeInDown.duration(240)} style={{ marginTop: theme.spacing.md }}>
         <Card>
-          {loading ? <Text variant="muted">Loading…</Text> : null}
+          {loading ? <SellerProductsSkeleton /> : null}
           {error ? (
             <Text style={{ color: theme.colors.danger }} weight="bold">
               {error}

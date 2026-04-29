@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthProvider';
 import { supabase } from '../lib/supabase';
+import { FormPageSkeleton } from '../ui/Skeleton';
 
 export function AddressesPage() {
   const nav = useNavigate();
@@ -11,10 +12,12 @@ export function AddressesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
     if (loading) return;
     if (!user) {
+      setInitialLoading(false);
       nav('/auth');
       return;
     }
@@ -27,6 +30,7 @@ export function AddressesPage() {
         .maybeSingle();
       if (!alive) return;
       setAddress((data?.address ?? '').toString());
+      setInitialLoading(false);
     })();
     return () => {
       alive = false;
@@ -62,6 +66,9 @@ export function AddressesPage() {
       </header>
 
       <section className="card">
+        {initialLoading ? <FormPageSkeleton /> : null}
+        {!initialLoading ? (
+          <>
         <div className="h2">Addresses</div>
         <div className="muted">Set your default delivery address.</div>
 
@@ -86,6 +93,8 @@ export function AddressesPage() {
             {saving ? 'Saving…' : 'Save address'}
           </button>
         </div>
+          </>
+        ) : null}
       </section>
     </div>
   );

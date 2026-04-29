@@ -14,6 +14,7 @@ import { Text } from '../../ui/components/Text';
 import { Button } from '../../ui/components/Button';
 import { ChipTabs } from '../../ui/components/ChipTabs';
 import { theme } from '../../ui/theme';
+import { SellerProductsSkeleton } from '../../ui/components/Skeleton';
 
 type ProductRow = {
   id: string;
@@ -253,7 +254,7 @@ export default function ProductsScreen() {
               onChange={(v) => setCategoryFilter(v as 'all' | 'water' | 'other')}
             />
 
-            {loading ? <Text variant="muted">Loading…</Text> : null}
+            {loading ? <SellerProductsSkeleton /> : null}
             {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
           </Animated.View>
         }
@@ -383,6 +384,13 @@ export default function ProductsScreen() {
             </Card>
           </Animated.View>
         )}
+        ListEmptyComponent={
+          loading ? null : (
+            <Card style={{ marginTop: theme.spacing.sm }}>
+              <Text variant="muted">No products found.</Text>
+            </Card>
+          )
+        }
       />
 
       {/* CTA moved to the overview card to match mock */}

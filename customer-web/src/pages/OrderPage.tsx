@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthProvider';
 import { supabase } from '../lib/supabase';
+import { OrderPageSkeleton } from '../ui/Skeleton';
 
 type Product = {
   id: string;
@@ -39,6 +40,8 @@ export function OrderPage() {
   const [customerName, setCustomerName] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [contactNumber, setContactNumber] = useState('');
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const [profileDefaults, setProfileDefaults] = useState<{
     display_name?: string | null;
     phone?: string | null;
@@ -191,6 +194,8 @@ export function OrderPage() {
           customer_name: customerName.trim(),
           delivery_address: deliveryAddress.trim(),
           contact_number: contactNumber.trim(),
+          latitude: coords?.latitude ?? null,
+          longitude: coords?.longitude ?? null,
           notes: notes.trim() ? notes.trim() : null,
           status: 'pending',
         })
@@ -213,6 +218,8 @@ export function OrderPage() {
       setCustomerName((profileDefaults?.display_name ?? '').trim());
       setDeliveryAddress((profileDefaults?.address ?? '').trim());
       setContactNumber((profileDefaults?.phone ?? '').trim());
+      setCoords(null);
+      setLocationMessage(null);
       setNotes('');
       setPlacedOrderId(order.id);
       setStep('menu');
@@ -222,6 +229,32 @@ export function OrderPage() {
     } finally {
       setPlacing(false);
     }
+  }
+
+  function useCurrentLocation() {
+    setLocationMessage(null);
+    if (!('geolocation' in navigator)) {
+      setLocationMessage('Geolocation is not supported on this device/browser.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCoords({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setLocationMessage('Location captured successfully.');
+      },
+      () => {
+        setLocationMessage('Location access denied. You can still submit manually.');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 30000,
+      }
+    );
   }
 
   return (
@@ -244,7 +277,7 @@ export function OrderPage() {
       </header>
 
       {loading ? (
-        <section className="card">Loading…</section>
+        <OrderPageSkeleton />
       ) : err ? (
         <section className="card">
           <div className="alert alert-error">{err}</div>
@@ -293,12 +326,14 @@ export function OrderPage() {
                           key={p.id}
                           style={{ opacity: p.is_available ? 1 : 0.6 }}
                         >
-                          <div className="product-card" style={{ alignItems: 'flex-start' }}>
-                            {publicImageUrl(p.image_url) ? (
-                              <img className="product-img" src={publicImageUrl(p.image_url)!} alt={p.name} />
-                            ) : (
-                              <div className="product-img" aria-hidden="true" />
-                            )}
+                          <div className="product-card">
+                            <div className="product-media">
+                              {publicImageUrl(p.image_url) ? (
+                                <img className="product-img" src={publicImageUrl(p.image_url)!} alt={p.name} />
+                              ) : (
+                                <div className="product-img" aria-hidden="true" />
+                              )}
+                            </div>
                             <div className="product-meta">
                               <div className="product-title">{p.name}</div>
                               <div className="muted" style={{ marginTop: 2, fontWeight: 700 }}>
@@ -399,12 +434,14 @@ export function OrderPage() {
                 </label>
                 <label className="field">
                   <div className="field-label">Address</div>
-                  <input
+                  <textarea
                     className="input"
                     value={deliveryAddress}
                     onChange={(e) => setDeliveryAddress(e.target.value)}
                     placeholder="House no., street, barangay, city"
                     autoComplete="street-address"
+                    required
+                    rows={3}
                   />
                 </label>
                 <label className="field">
@@ -428,6 +465,24 @@ export function OrderPage() {
                   />
                 </label>
               </div>
+              <div className="row" style={{ marginTop: 10 }}>
+                <button className="btn btn-ghost" type="button" onClick={useCurrentLocation}>
+                  Use Current Location
+                </button>
+                {coords ? (
+                  <div className="muted" style={{ fontSize: 12 }}>
+                    📍 {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}
+                  </div>
+                ) : null}
+              </div>
+              {locationMessage ? (
+                <div
+                  className={locationMessage.includes('successfully') ? 'alert alert-ok' : 'alert alert-error'}
+                  style={{ marginTop: 10, fontSize: 13 }}
+                >
+                  {locationMessage}
+                </div>
+              ) : null}
 
               <div className="divider" />
 

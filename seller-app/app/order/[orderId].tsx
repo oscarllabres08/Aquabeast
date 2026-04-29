@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { Image, ScrollView, View } from 'react-native';
+import { Image, Linking, ScrollView, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { useAuth } from '../../providers/AuthProvider';
 import { Screen } from '../../ui/components/Screen';
 import { Card } from '../../ui/components/Card';
 import { Text } from '../../ui/components/Text';
+import { SellerOrdersSkeleton } from '../../ui/components/Skeleton';
 import { theme } from '../../ui/theme';
 
 type OrderRow = {
@@ -18,7 +19,10 @@ type OrderRow = {
   created_at: string;
   customer_name: string;
   delivery_address: string;
+  landmark: string | null;
   contact_number: string;
+  latitude: number | null;
+  longitude: number | null;
   notes: string | null;
 };
 
@@ -62,7 +66,7 @@ export default function OrderDetailsScreen() {
       setLoading(true);
       const { data: o, error: oErr } = await supabase
         .from('orders')
-        .select('id,status,created_at,customer_name,delivery_address,contact_number,notes')
+        .select('id,status,created_at,customer_name,delivery_address,landmark,contact_number,latitude,longitude,notes')
         .eq('id', orderId)
         .single();
       if (!alive) return;
@@ -120,12 +124,27 @@ export default function OrderDetailsScreen() {
     }
   }
 
+  async function openInMaps() {
+    if (!order) return;
+    const hasCoords = typeof order.latitude === 'number' && typeof order.longitude === 'number';
+    const destination = hasCoords
+      ? `${order.latitude},${order.longitude}`
+      : encodeURIComponent(`${order.delivery_address}${order.landmark ? `, ${order.landmark}` : ''}`);
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+    await Linking.openURL(url);
+  }
+
+  async function callCustomer() {
+    if (!order?.contact_number) return;
+    await Linking.openURL(`tel:${order.contact_number}`);
+  }
+
   return (
     <Screen>
       <Stack.Screen options={{ title: 'Order Details' }} />
 
       <ScrollView contentContainerStyle={{ paddingTop: theme.spacing.md, gap: theme.spacing.sm, paddingBottom: 28 }}>
-        {loading ? <Text variant="muted">Loading…</Text> : null}
+        {loading ? <SellerOrdersSkeleton /> : null}
         {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
 
         {order ? (
@@ -179,7 +198,19 @@ export default function OrderDetailsScreen() {
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
                     <Ionicons name="location-outline" size={16} color={theme.colors.primary} style={{ marginTop: 2 }} />
-                    <Text style={{ flex: 1 }}>{order.delivery_address}</Text>
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <Text>{order.delivery_address}</Text>
+                      {order.landmark ? <Text variant="muted">Landmark: {order.landmark}</Text> : null}
+                    </View>
+                  </View>
+                </View>
+
+                <View style={{ marginTop: 12, flexDirection: 'row', gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Button title="Open in Maps" onPress={openInMaps} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Button variant="ghost" title="Call Customer" onPress={callCustomer} />
                   </View>
                 </View>
 
