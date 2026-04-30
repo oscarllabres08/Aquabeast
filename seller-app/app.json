@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "seller-app",
+    "name": "Aquabeast WRS Seller",
     "slug": "seller-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "../icon.jpeg",
     "scheme": "sellerapp",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "../icon.jpeg",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#E6F4FE"
     },
     "ios": {
       "supportsTablet": true,
@@ -19,9 +19,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "../icon.jpeg"
       },
       "package": "com.aquabeast.sellerapp",
       "versionCode": 1,

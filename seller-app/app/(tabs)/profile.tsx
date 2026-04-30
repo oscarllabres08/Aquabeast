@@ -382,36 +382,6 @@ export default function ProfileScreen() {
             </Pressable>
           </Card>
 
-          {activeSection === 'profile' ? <Card>
-            <Pressable onPress={() => setActiveSection('profile')} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10 }}>
-              <Text weight={activeSection === 'profile' ? 'extrabold' : 'bold'} style={{ flex: 1 }}>
-                Profile
-              </Text>
-              <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />
-            </Pressable>
-            <View style={{ height: 1, backgroundColor: theme.colors.border }} />
-            <Pressable onPress={() => setActiveSection('wallets')} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10 }}>
-              <Text weight={activeSection === 'wallets' ? 'extrabold' : 'bold'} style={{ flex: 1 }}>
-                E-wallet accounts
-              </Text>
-              <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />
-            </Pressable>
-            <View style={{ height: 1, backgroundColor: theme.colors.border }} />
-            <Pressable onPress={() => setActiveSection('settings')} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10 }}>
-              <Text weight={activeSection === 'settings' ? 'extrabold' : 'bold'} style={{ flex: 1 }}>
-                Account settings
-              </Text>
-              <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />
-            </Pressable>
-            <View style={{ height: 1, backgroundColor: theme.colors.border }} />
-            <Pressable onPress={() => setActiveSection('help')} style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 10 }}>
-              <Text weight={activeSection === 'help' ? 'extrabold' : 'bold'} style={{ flex: 1 }}>
-                Help Center
-              </Text>
-              <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />
-            </Pressable>
-          </Card>
-
           {activeSection === 'profile' ? (
             <Card>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
